@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunny or Nui?</title>
+<style>
+  :root { --bg:#16181d; --fg:#e8e8ea; --muted:#9aa0aa; --sunny:#f0b429; --nui:#4ea8de; --panel:#22252c; }
+  * { box-sizing: border-box; }
+  body { margin:0; height:100vh; display:flex; flex-direction:column; background:var(--bg);
+         color:var(--fg); font:15px/1.4 system-ui, sans-serif; }
+  header, footer { display:flex; gap:16px; align-items:center; padding:10px 16px; background:var(--panel); }
+  header .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+  .bar { height:4px; background:#333; } .bar > div { height:100%; background:#6c6; width:0; transition:width .2s; }
+  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px; position:relative; }
+  img { max-width:100%; max-height:100%; object-fit:contain; border:6px solid transparent; border-radius:8px; }
+  img.sunny { border-color:var(--sunny); } img.nui { border-color:var(--nui); }
+  .badge { position:absolute; top:20px; padding:4px 14px; border-radius:999px; font-weight:700; color:#111; display:none; }
+  .badge.sunny { display:block; background:var(--sunny); } .badge.nui { display:block; background:var(--nui); }
+  .pill { padding:2px 10px; border-radius:999px; font-weight:600; color:#111; }
+  .pill.sunny { background:var(--sunny); } .pill.nui { background:var(--nui); }
+  kbd { background:#333; border-radius:4px; padding:1px 6px; font-family:inherit; }
+  footer { justify-content:center; flex-wrap:wrap; color:var(--muted); }
+  .done { font-size:20px; text-align:center; }
+  .error { color:#f66; }
+</style>
+</head>
+<body>
+<header>
+  <strong id="pos">–</strong>
+  <span class="name" id="name"></span>
+  <span class="pill sunny">Sunny <span id="cSunny">0</span></span>
+  <span class="pill nui">Nui <span id="cNui">0</span></span>
+  <span id="left"></span>
+</header>
+<div class="bar"><div id="progress"></div></div>
+<main>
+  <span class="badge" id="badge"></span>
+  <img id="img" alt="">
+</main>
+<footer>
+  <span><kbd>S</kbd> Sunny</span>
+  <span><kbd>N</kbd> Nui</span>
+  <span><kbd>U</kbd> clear label</span>
+  <span><kbd>←</kbd>/<kbd>→</kbd> previous / next</span>
+  <span><kbd>Space</kbd> next unlabelled</span>
+  <span id="status"></span>
+</footer>
+<script>
+let items = [], i = 0;
+const $ = id => document.getElementById(id);
+
+async function load() {
+  const state = await (await fetch('/api/state')).json();
+  items = state.items;
+  const first = items.findIndex(x => !x.label);
+  i = first === -1 ? 0 : first;
+  render();
+}
+
+function render() {
+  const total = items.length, labelled = items.filter(x => x.label).length;
+  $('cSunny').textContent = items.filter(x => x.label === 'sunny').length;
+  $('cNui').textContent = items.filter(x => x.label === 'nui').length;
+  $('left').textContent = `${total - labelled} left`;
+  $('progress').style.width = total ? `${100 * labelled / total}%` : '0';
+  if (!total) { $('name').textContent = 'No images found'; return; }
+  const it = items[i];
+  $('pos').textContent = `${i + 1} / ${total}`;
+  $('name').textContent = it.name;
+  $('img').src = '/img/' + encodeURIComponent(it.name);
+  $('img').className = it.label || '';
+  $('badge').className = 'badge ' + (it.label || '');
+  $('badge').textContent = it.label === 'sunny' ? 'Sunny' : it.label === 'nui' ? 'Nui' : '';
+  // preload the next image so advancing feels instant
+  if (items[i + 1]) new Image().src = '/img/' + encodeURIComponent(items[i + 1].name);
+}
+
+function nextUnlabelled() {
+  for (let k = 1; k <= items.length; k++) {
+    const j = (i + k) % items.length;
+    if (!items[j].label) return j;
+  }
+  return -1;
+}
+
+async function setLabel(label) {
+  const it = items[i];
+  const res = await fetch('/api/label', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: it.name, label}),
+  });
+  if (!res.ok) { $('status').innerHTML = `<span class="error">save failed: ${res.status}</span>`; return; }
+  it.label = (await res.json()).label;
+  $('status').textContent = label ? `saved ${it.name} → ${label}` : `cleared ${it.name}`;
+  if (label) {
+    const j = nextUnlabelled();
+    if (j === -1) $('status').textContent = 'All photos labelled 🎉';
+    else if (i < items.length - 1) i = i + 1;  // advance sequentially
+  }
+  render();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || !items.length) return;
+  const k = e.key.toLowerCase();
+  if (k === 's') setLabel('sunny');
+  else if (k === 'n') setLabel('nui');
+  else if (k === 'u' || k === 'backspace' || k === 'delete') setLabel(null);
+  else if (k === 'arrowright') { i = Math.min(i + 1, items.length - 1); render(); }
+  else if (k === 'arrowleft') { i = Math.max(i - 1, 0); render(); }
+  else if (k === ' ') { e.preventDefault(); const j = nextUnlabelled(); if (j !== -1) { i = j; render(); } }
+  else return;
+  e.preventDefault();
+});
+
+load();
+</script>
+</body>
+</html>
