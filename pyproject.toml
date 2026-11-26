@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Tell the look-alike cats Sunny and Nui apart on Petlibro Luma litter-box images."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pillow>=13.0.0",
+    "pillow-heif>=1.9.0",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]

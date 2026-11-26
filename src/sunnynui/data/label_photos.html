@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sunny or Nui?</title>
 <style>
-  :root { --bg:#16181d; --fg:#e8e8ea; --muted:#9aa0aa; --sunny:#f0b429; --nui:#4ea8de; --panel:#22252c; }
+  :root { --bg:#16181d; --fg:#e8e8ea; --muted:#9aa0aa; --sunny:#f0b429; --nui:#4ea8de; --together:#b388eb; --panel:#22252c; }
   * { box-sizing: border-box; }
   body { margin:0; height:100vh; display:flex; flex-direction:column; background:var(--bg);
          color:var(--fg); font:15px/1.4 system-ui, sans-serif; }
@@ -15,10 +15,13 @@
   main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px; position:relative; }
   img { max-width:100%; max-height:100%; object-fit:contain; border:6px solid transparent; border-radius:8px; }
   img.sunny { border-color:var(--sunny); } img.nui { border-color:var(--nui); }
+  img.together { border-color:var(--together); }
   .badge { position:absolute; top:20px; padding:4px 14px; border-radius:999px; font-weight:700; color:#111; display:none; }
   .badge.sunny { display:block; background:var(--sunny); } .badge.nui { display:block; background:var(--nui); }
+  .badge.together { display:block; background:var(--together); }
   .pill { padding:2px 10px; border-radius:999px; font-weight:600; color:#111; }
   .pill.sunny { background:var(--sunny); } .pill.nui { background:var(--nui); }
+  .pill.together { background:var(--together); }
   kbd { background:#333; border-radius:4px; padding:1px 6px; font-family:inherit; }
   footer { justify-content:center; flex-wrap:wrap; color:var(--muted); }
   .done { font-size:20px; text-align:center; }
@@ -31,6 +34,7 @@
   <span class="name" id="name"></span>
   <span class="pill sunny">Sunny <span id="cSunny">0</span></span>
   <span class="pill nui">Nui <span id="cNui">0</span></span>
+  <span class="pill together">Together <span id="cTogether">0</span></span>
   <span id="left"></span>
 </header>
 <div class="bar"><div id="progress"></div></div>
@@ -41,6 +45,7 @@
 <footer>
   <span><kbd>S</kbd> Sunny</span>
   <span><kbd>N</kbd> Nui</span>
+  <span><kbd>T</kbd> both together</span>
   <span><kbd>U</kbd> clear label</span>
   <span><kbd>←</kbd>/<kbd>→</kbd> previous / next</span>
   <span><kbd>Space</kbd> next unlabelled</span>
@@ -62,6 +67,7 @@ function render() {
   const total = items.length, labelled = items.filter(x => x.label).length;
   $('cSunny').textContent = items.filter(x => x.label === 'sunny').length;
   $('cNui').textContent = items.filter(x => x.label === 'nui').length;
+  $('cTogether').textContent = items.filter(x => x.label === 'together').length;
   $('left').textContent = `${total - labelled} left`;
   $('progress').style.width = total ? `${100 * labelled / total}%` : '0';
   if (!total) { $('name').textContent = 'No images found'; return; }
@@ -71,7 +77,7 @@ function render() {
   $('img').src = '/img/' + encodeURIComponent(it.name);
   $('img').className = it.label || '';
   $('badge').className = 'badge ' + (it.label || '');
-  $('badge').textContent = it.label === 'sunny' ? 'Sunny' : it.label === 'nui' ? 'Nui' : '';
+  $('badge').textContent = {sunny: 'Sunny', nui: 'Nui', together: 'Together'}[it.label] || '';
   // preload the next image so advancing feels instant
   if (items[i + 1]) new Image().src = '/img/' + encodeURIComponent(items[i + 1].name);
 }
@@ -106,6 +112,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 's') setLabel('sunny');
   else if (k === 'n') setLabel('nui');
+  else if (k === 't') setLabel('together');
   else if (k === 'u' || k === 'backspace' || k === 'delete') setLabel(null);
   else if (k === 'arrowright') { i = Math.min(i + 1, items.length - 1); render(); }
   else if (k === 'arrowleft') { i = Math.max(i - 1, 0); render(); }

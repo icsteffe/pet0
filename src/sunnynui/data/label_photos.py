@@ -1,8 +1,9 @@
 """Quick folder-per-class labeller for personal cat photos (TODO e01).
 
 Serves a tiny local web UI that shows every image in ``my_pets`` one after another.
-Press ``s`` for Sunny or ``n`` for Nui and the photo is *copied* into ``cat_sunny`` /
-``cat_nui``. Originals are never modified, so every label is reversible (``u`` clears it).
+Press ``s`` for Sunny, ``n`` for Nui or ``t`` for both together and the photo is *copied*
+into ``cat_sunny`` / ``cat_nui`` / ``cat_together``. Originals are never modified, so
+every label is reversible (``u`` clears it).
 
 Usage::
 
@@ -26,7 +27,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
-LABELS = {"sunny": "cat_sunny", "nui": "cat_nui"}
+LABELS = {"sunny": "cat_sunny", "nui": "cat_nui", "together": "cat_together"}
 DEFAULT_SRC = Path("data/raw/personal/my_pets")
 DEFAULT_OUT = Path("data/raw/personal")
 UI_FILE = Path(__file__).with_name("label_photos.html")
@@ -138,8 +139,8 @@ def make_handler(store: LabelStore) -> type[BaseHTTPRequestHandler]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--src", type=Path, default=DEFAULT_SRC, help="folder with unlabelled photos")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="parent of cat_sunny/cat_nui")
+    parser.add_argument("--src", type=Path, default=DEFAULT_SRC, help="unlabelled photos")
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="parent of cat_* folders")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args(argv)
@@ -151,7 +152,7 @@ def main(argv: list[str] | None = None) -> None:
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(store))
     url = f"http://127.0.0.1:{args.port}/"
     print(f"Labelling {len(store.images())} photos from {store.src}")
-    print(f"Copies go to {store.class_dir('sunny')} and {store.class_dir('nui')}")
+    print(f"Copies go to {', '.join(str(store.class_dir(label)) for label in LABELS)}")
     print(f"Open {url}  (Ctrl+C to stop)")
     if not args.no_browser:
         webbrowser.open(url)

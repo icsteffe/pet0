@@ -36,6 +36,13 @@ def test_relabel_moves_between_folders(store):
     assert (store.out / "cat_nui" / "b.jpg").exists()
 
 
+def test_together_label(store):
+    store.set_label("A.png", "together")
+    assert (store.out / "cat_together" / "A.png").exists()
+    store.set_label("A.png", "sunny")
+    assert not (store.out / "cat_together" / "A.png").exists()
+
+
 def test_clear_label(store):
     store.set_label("b.jpg", "nui")
     store.set_label("b.jpg", None)
@@ -56,7 +63,7 @@ def test_snapshot_counts(store):
     store.set_label("A.png", "sunny")
     store.set_label("b.jpg", "nui")
     snap = store.snapshot()
-    assert snap["counts"] == {"sunny": 1, "nui": 1}
+    assert snap["counts"] == {"sunny": 1, "nui": 1, "together": 0}
     assert [i["label"] for i in snap["items"]] == ["sunny", "nui", None]
 
 
@@ -75,7 +82,7 @@ def test_http_roundtrip(store):
         )
         assert json.loads(urllib.request.urlopen(req).read())["label"] == "nui"
         state = json.loads(urllib.request.urlopen(base + "/api/state").read())
-        assert state["counts"] == {"sunny": 0, "nui": 1}
+        assert state["counts"] == {"sunny": 0, "nui": 1, "together": 0}
         with pytest.raises(urllib.error.HTTPError) as err:
             urllib.request.urlopen(base + "/img/..%2Fsecret.jpg")
         assert err.value.code == 404
